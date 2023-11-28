@@ -9,7 +9,18 @@ const WizardScene = require('telegraf/scenes/wizard')
 const mongoose = require('mongoose')
 const { enter, leave } = Stage
 const connectDB = require('./db')
+const express = require('express')
 
+const app = express()
+app.get('/', (req, res) => {
+  res.send("This is WeGo bot")
+  console.log('I am up and running')
+})
+
+app.listen(3000,()=>{
+    console.log('I am up and running')
+
+})
 //Utility functions
 const { validateFullName } = require('./Utilities/validateName')
 const { validatePhoneNumber } = require('./Utilities/validatePhone')
@@ -40,7 +51,10 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
-
+        if(ctx.message.text.toLowerCase() == '/cancel'){
+          ctx.reply('Process terminated \n\nplease use the /start command to start using our service ') ;
+          return ctx.scene.leave();
+        }
         const fullName = ctx.message.text;
         if (!validateFullName(fullName)){
             ctx.reply('Please enter your full name in the format: \n\nFirstname Middlename Lastname');
@@ -61,27 +75,34 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
-        if(ctx.updateType != 'callback_query'){
+        
+          if(ctx.updateType != 'callback_query'){
             ctx.reply('Please enter the correct Information 👍');
             bot.telegram.sendMessage(ctx.chat.id, `Great ${ctx.wizard.state.user.name}! Next,select your gender? 🧑♂️👩♀️`, {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '👦 Male', callback_data: 'Male' }],
                         [{ text: '👧 Female', callback_data: 'Female' }],
-    
+
                     ]
                 }
             })
-            
+
             return
-        }
-        ctx.answerCbQuery()
-        ctx.wizard.state.user.gender = ctx.update.callback_query.data
-        ctx.reply(`Thanks! What is your phone number? 📱 
-        \nplease enter in this format: 0912365478`)
-        return ctx.wizard.next()
+          }
+          ctx.answerCbQuery()
+          ctx.wizard.state.user.gender = ctx.update.callback_query.data
+          ctx.reply(`Thanks! What is your phone number? 📱 
+          \nplease enter in this format: 0912365478`)
+          return ctx.wizard.next()
+        
+        
     },
     (ctx) => {
+        if(ctx.message.text.toLowerCase() == '/cancel'){
+          ctx.reply('Process terminated \n\nplease use the /start command to start using our service ') ;
+          return ctx.scene.leave();
+        }
         const phone = ctx.message.text
         if(!validatePhoneNumber(phone)){
             ctx.reply('Please enter your phone number in this format: 👍 \n\n Ex 0912345678');
@@ -92,6 +113,10 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
+      if(ctx.message.text.toLowerCase() == '/cancel'){
+        ctx.reply('Process terminated \n\nplease use the /start command to start using our service ') ;
+        return ctx.scene.leave();
+      }
         const email = ctx.message.text
         if(!validateEmail(email)){
             ctx.reply('Please enter your email address in the correct format 👍')
@@ -103,6 +128,10 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
+       if(ctx.message.text.toLowerCase() == '/cancel'){
+         ctx.reply('Process terminated \n\nplease use the /start command to start using our service ') ;
+         return ctx.scene.leave();
+       }
         ctx.wizard.state.user.studentIDNumber = ctx.message.text
         bot.telegram.sendMessage(ctx.chat.id, 'What year are you in? 📚', {
             reply_markup: {
@@ -118,6 +147,7 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
+     
         if(ctx.updateType != 'callback_query'){
             ctx.reply('Please enter the correct Information 👍');
             bot.telegram.sendMessage(ctx.chat.id, 'What year are you in? 📚', {
@@ -140,7 +170,7 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
-
+      
         if(ctx.updateSubTypes[0] != 'photo'){
             ctx.reply('Please upload your profile picture in picture format👍');
             return
@@ -151,6 +181,7 @@ const registerionScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
+      
         if(ctx.updateSubTypes[0] != 'photo'){
             ctx.reply('Please upload your student ID card in picture format👍');
             return
@@ -185,8 +216,25 @@ stage.register(registerionScene)
 
 bot.use(stage.middleware())
 
+//register command
 bot.command('register', (ctx) => {
     ctx.scene.enter('registerationScene')
+})
+
+bot.command('bookride',(ctx) => {
+  ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
+})
+
+bot.command( 'history', (ctx) => {
+  ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
+})
+
+bot.command( 'help', (ctx) => {
+  ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
+})
+
+bot.command( 'support', (ctx) => {
+  ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
 })
 
 bot.start((ctx) => {
@@ -199,8 +247,8 @@ Commands and Descriptions:
 📜 /history - Check your booking history. 
 ℹ️ /help - Find information about my features. 
 🆘 /support - Connect to the support team for assistance. 
-📋 /register - Register to access exclusive features. `;
-
+📋 /register - Register to access exclusive features. 
+❌ /cancel - Cancel currently occuring event`
     ctx.reply(welcomeMessage);
 })
 console.log('Bot has been started ...')
