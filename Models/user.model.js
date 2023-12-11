@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema({
+  chatId: {
+    type: Number,
+    required: true,
+    unique: true
+  },
   name: {
     type: String,
     required: true
@@ -12,15 +17,13 @@ const studentSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   email: {
     type: String,
     required: true,
     unique: true
-  },
-  profilePictureURL: {
-    type: String // Assuming you store the URL to the picture
   },
   studentIDNumber: {
     type: String,
