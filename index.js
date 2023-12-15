@@ -25,11 +25,12 @@ app.listen(3000, () => {
 const { validateFullName } = require('./Utilities/validateName')
 const { validatePhoneNumber } = require('./Utilities/validatePhone')
 const { validateEmail } = require('./Utilities/validateEmail')
-const {isUserRegistered} = require('./Utilities/isUserRegistered')
+const { isUserRegistered } = require('./Utilities/isUserRegistered')
 
 
 //model
 const User = require('./Models/user.model')
+const Trip = require('./Models/trip.model')
 
 // create database connection
 connectDB();
@@ -78,7 +79,7 @@ const registerationScene = new WizardScene(
                 }
             })
 
-           
+
 
             return ctx.wizard.next()
         }
@@ -293,11 +294,70 @@ const registerationScene = new WizardScene(
 )
 
 //booking scene
+const bookingScene = new WizardScene(
+    'bookingScene',
+    (ctx) => {
+        bot.telegram.sendMessage(ctx.chat.id, `Welcome to WeGo to book your trip please select from the available trips`, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: 'View Available Trips', callback_data: 'view' }],
 
+                ]
+            }
+        })
+
+        return ctx.wizard.next()
+    },
+    (ctx) => {
+        ctx.answerCbQuery()
+
+        // return a keyboard 
+        Trip.find({})
+            .then((trips) => {
+                const tripList = trips.map((trip) => {
+                    return (
+                        `Trip 
+
+            Destination : ${trip.destination}
+            Date : ${trip.date}
+            Departure Time : ${trip.departureTime}
+            price : ${trip.price}
+
+                `)
+                })
+
+                tripList.forEach((trip) => {
+                    bot.telegram.sendMessage(ctx.chat.id, trip, {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+
+                                    { text: 'Book Trip', callback_data: `${trip._id}` },
+
+                                ],
+                            ]
+                        }
+                    })
+                })
+            })
+
+
+
+        return ctx.wizard.next()
+    },
+    (ctx) => {
+        ctx.answerCbQuery()
+        ctx.reply('Process terminated \n\nplease use the /start command to start using our service\n\n Join our telegram channel @WeGo_Ride ');
+        return ctx.scene.leave();
+    }
+)
+
+//Scene
 
 
 const stage = new Stage()
 stage.register(registerationScene)
+stage.register(bookingScene)
 
 bot.use(stage.middleware())
 
@@ -305,7 +365,7 @@ bot.use(stage.middleware())
 bot.command('register', (ctx) => {
     //check if the user is already registered
     const chatId = ctx.chat.id
-    if(isUserRegistered(chatId)){
+    if (isUserRegistered(chatId)) {
         ctx.reply('You are already registered 😊\n\n please use the /start command to start using our service\n')
         return
     }
@@ -314,7 +374,8 @@ bot.command('register', (ctx) => {
 })
 
 bot.command('bookride', (ctx) => {
-    ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
+    // ctx.reply('This feature is coming soon \n\n Thank you for using our service 🙏')
+    ctx.scene.enter('bookingScene')
 })
 
 bot.command('history', (ctx) => {
