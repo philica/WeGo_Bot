@@ -26,12 +26,12 @@ const { validateFullName } = require('./Utilities/validateName')
 const { validatePhoneNumber } = require('./Utilities/validatePhone')
 const { validateEmail } = require('./Utilities/validateEmail')
 const { isUserRegistered } = require('./Utilities/isUserRegistered')
-
+const { findUserIdByChatId } = require('./Utilities/findUserIdByChatId');
 
 //model
 const User = require('./Models/user.model')
 const Trip = require('./Models/trip.model')
-
+const Booking = require('./Models/booking.model');
 // create database connection
 connectDB();
 
@@ -297,7 +297,27 @@ const registerationScene = new WizardScene(
 const bookingScene = new WizardScene(
     'bookingScene',
     (ctx) => {
-        bot.telegram.sendMessage(ctx.chat.id, `Welcome to WeGo to book your trip please select from the available trips`, {
+        ctx.reply('Welcome to WeGo , to book your ride please fill the following informations')
+        ctx.reply(`How many people will be attending 
+        - Type '1' if it's only you
+        - Type '2' if it's you and one another friend and etc...
+        `)
+
+        ctx.wizard.state.booking = {};
+        ctx.wizard.state.booking.chatId = ctx.chat.id
+        return ctx.wizard.next()
+    },
+    (ctx) => {
+
+        if (ctx.message.text.toLowerCase() == '/cancel') {
+            ctx.reply('Process terminated \n\nplease use the /start command to start using our service ');
+            return ctx.scene.leave();
+        }
+
+        const passengerCount = ctx.message.text
+        ctx.wizard.state.booking.passengerCount = passengerCount
+
+        bot.telegram.sendMessage(ctx.chat.id, `Great, Now please select from the following available trips`, {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: 'View Available Trips', callback_data: 'view' }],
@@ -316,23 +336,37 @@ const bookingScene = new WizardScene(
             .then((trips) => {
                 const tripList = trips.map((trip) => {
                     return (
-                        `Trip 
+                        {
+                            tripId: trip._id,
+                            destination: trip.destination,
+                            date: trip.date,
+                            departureTime: trip.departureTime,
+                            vehicleType: trip.vehicleType,
+                            price: trip.price
 
-            Destination : ${trip.destination}
-            Date : ${trip.date}
-            Departure Time : ${trip.departureTime}
-            price : ${trip.price}
-
-                `)
+                        })
                 })
 
+                ctx.wizard.state.booking.tripList = tripList
+
+                console.log(tripList)
+
                 tripList.forEach((trip) => {
-                    bot.telegram.sendMessage(ctx.chat.id, trip, {
+
+                    const message = `Trip
+                    
+                    Destination : ${trip.destination}
+                    Date : ${trip.date}
+                    Time : ${trip.departureTime}
+                    Vehicle Type: ${trip.vehicleType}
+                    Price : ${trip.price}
+                    `
+                    bot.telegram.sendMessage(ctx.chat.id, message, {
                         reply_markup: {
                             inline_keyboard: [
                                 [
 
-                                    { text: 'Book Trip', callback_data: `${trip._id}` },
+                                    { text: 'Book Trip', callback_data: `${trip.tripId}` },
 
                                 ],
                             ]
@@ -346,9 +380,84 @@ const bookingScene = new WizardScene(
         return ctx.wizard.next()
     },
     (ctx) => {
-        ctx.answerCbQuery()
-        ctx.reply('Process terminated \n\nplease use the /start command to start using our service\n\n Join our telegram channel @WeGo_Ride ');
-        return ctx.scene.leave();
+        if (ctx.updateType != 'callback_query') {
+            if (ctx.update.message.text) {
+                if (ctx.update.message.text == '/cancel') {
+                    //leave scene
+                    ctx.reply('Process terminated \n\nplease use the /start command to start using our service ');
+                    return ctx.scene.leave();
+                }
+            }
+
+            const tripList = ctx.wizard.state.booking.tripList
+            ctx.reply('Please select the correct Information 👍');
+            tripList.forEach((trip) => {
+
+                const message = `Trip
+                    
+                    Destination : ${trip.destination}
+                    Date : ${trip.date}
+                    Time : ${trip.departureTime}
+                    Vehicle Type: ${trip.vehicleType}
+                    Price : ${trip.price}
+                    `
+                bot.telegram.sendMessage(ctx.chat.id, message, {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+
+                                { text: 'Book Trip', callback_data: `${trip.tripId}` },
+
+                            ],
+                        ]
+                    }
+                })
+            })
+
+            return
+        }
+        else {
+            ctx.answerCbQuery()
+            //save trip 
+            const tripId = ctx.update.callback_query.data
+            const chatId = ctx.wizard.state.booking.chatId
+            const passengerCount = ctx.wizard.state.booking.passengerCount
+            let userId
+            findUserIdByChatId(chatId)
+                .then((result) => {
+
+                    // if the user exists
+                    userId = result; // Set the userId variable to the returned value
+                    // Use the user ID as needed
+                    const newBooking = new Booking({
+                        userId: userId,
+                        tripId: tripId,
+                        passengerCount: passengerCount,
+                    })
+
+                    // Save the booking document to the database
+                    newBooking.save()
+                        .then((booking) => {
+                            console.log('Booking saved:', booking);
+                            // Handle successful booking creation
+                            ctx.reply('you have succesfully booked your ride , you will receive a confirmation shortly\n thanks for using our service' )
+                        })
+                        .catch((error) => {
+                            console.error('Error saving booking:', error);
+                            // Handle error during booking creation
+                        });
+
+
+                })
+                .catch((error) => {
+                    console.error('Error finding user ID:', error);
+                    // Handle the error
+                });
+
+
+
+            return ctx.scene.leave();
+        }
     }
 )
 
