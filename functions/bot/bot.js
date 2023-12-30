@@ -35,7 +35,7 @@ const Booking = require('./Models/booking.model');
 // create database connection
 connectDB();
 
-const bot = new Telegraf('6556040954:AAGp40Ab72lF_RFaisUOepCFSpMFBU04yC8')
+const bot = new Telegraf('6725874509:AAFynN4aThY2ivH0XaBqGjQ2TyLRNWmXwUE')
 bot.use(session())
 
 
